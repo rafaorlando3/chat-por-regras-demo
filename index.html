@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat por regras: demonstração</title>
+<meta name="description" id="meta-desc" content="Demonstração de chat por regras em português e espanhol, com respostas predefinidas e indicação simulada de atendimento humano.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475;
+    --line: #dde1e8; --field-line: #767676; --accent: #1f6feb; --accent-text: #ffffff;
+    --bot: #eef2f7; --user: #1f6feb; --user-text: #ffffff; --warn: #9a5b00; --warn-bg: #fff4e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141a; --card: #1a1f27; --text: #e6e9ef; --muted: #9aa3b2;
+      --line: #2b323d; --field-line: #9aa3b2; --accent: #4c8dff; --accent-text: #0b0e13;
+      --bot: #232a35; --user: #4c8dff; --user-text: #0b0e13; --warn: #ffcc80; --warn-bg: #3a2a10;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; }
+  .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .langs button { border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+  .langs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .chat { display: flex; flex-direction: column; height: 560px; max-height: 75vh; }
+  .chat header { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .log:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+  .bot { background: var(--bot); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .user { background: var(--user); color: var(--user-text); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .note { font-size: .85rem; color: var(--warn); background: var(--warn-bg); padding: 6px 10px; border-radius: 8px; align-self: flex-start; max-width: 85%; }
+  .why { font-size: .78rem; color: var(--muted); align-self: flex-start; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; }
+  .chips button { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 4px 10px; border-radius: 999px; cursor: pointer; font: inherit; font-size: .9rem; }
+  .chips button:hover, .chips button:focus-visible { background: var(--accent); color: var(--accent-text); outline: none; }
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  input[type=text] { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--bg); color: var(--text); font: inherit; }
+  input[type=text]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input:disabled, form button:disabled { opacity: .6; cursor: not-allowed; }
+  form button:focus-visible, .langs button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  form button { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-text); font: inherit; cursor: pointer; }
+  aside .card { padding: 16px; margin-bottom: 16px; }
+  aside h2 { font-size: 1rem; margin: 0 0 8px; }
+  aside ul { margin: 0; padding-left: 18px; }
+  aside li { margin: 4px 0; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .errors { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: none; }
+  label.toggle { display: flex; gap: 8px; align-items: center; font-size: .9rem; margin-top: 8px; }
+  footer { margin-top: 24px; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1 id="t-title">Chat por regras: demonstração</h1>
+      <p class="lead" id="t-lead">Experimente respostas por palavras-chave e veja quando o chat indica atendimento humano. Nesta demonstração, o encaminhamento é simulado: nenhuma conversa é enviada.</p>
+    </div>
+    <div class="langs" role="group" aria-label="Idioma">
+      <button type="button" data-lang="pt" aria-pressed="true">Português</button>
+      <button type="button" data-lang="es" aria-pressed="false">Español</button>
+    </div>
+  </div>
+
+  <div class="errors" id="errors" role="alert"></div>
+
+  <div class="grid">
+    <section class="card chat" aria-labelledby="chat-title">
+      <header id="chat-title">Loja Exemplo</header>
+      <div class="log" id="log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Histórico da conversa" tabindex="0"></div>
+      <form id="form" autocomplete="off">
+        <label for="input" class="sr-only" id="t-label">Sua mensagem</label>
+        <input type="text" id="input" maxlength="500" placeholder="Escreva sua dúvida">
+        <button type="submit" id="t-send">Enviar</button>
+      </form>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h2 id="t-owner">Perguntas sem resposta nesta aba</h2>
+        <p class="muted" id="t-owner-desc">Lista de exemplo para mostrar lacunas da base. O código não transmite nem grava as mensagens; a lista é reiniciada ao recarregar a página ou trocar o idioma.</p>
+        <ul id="unanswered"></ul>
+        <label class="toggle"><input type="checkbox" id="show-why"> <span id="t-why">Mostrar como o chat decidiu</span></label>
+      </div>
+      <div class="card">
+        <h2 id="t-how">Como funciona</h2>
+        <ul id="how"></ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="t-footer">Negócio, horários e condições são fictícios. Código aberto (MIT).</footer>
+</main>
+
+<script src="chat-engine.js"></script>
+<script src="rules.js"></script>
+<script>
+(function () {
+  "use strict";
+  var E = window.ChatEngine, ALL = window.CHAT_RULES;
+  var TEXT = {
+    pt: {
+      title: "Chat por regras: demonstração",
+      lead: "Experimente respostas por palavras-chave e veja quando o chat indica atendimento humano. Nesta demonstração, o encaminhamento é simulado: nenhuma conversa é enviada.",
+      desc: "Demonstração de chat por regras em português e espanhol, com respostas predefinidas e indicação simulada de atendimento humano.", logLabel: "Histórico da conversa",
+      label: "Sua mensagem", placeholder: "Escreva sua dúvida", send: "Enviar",
+      owner: "Perguntas sem resposta nesta aba",
+      ownerDesc: "Lista de exemplo para mostrar lacunas da base. O código não transmite nem grava as mensagens; a lista é reiniciada ao recarregar a página ou trocar o idioma.",
+      none: "Nenhuma até agora.", why: "Mostrar como o chat decidiu", how: "Como funciona",
+      howItems: [
+        "Cada assunto tem palavras-chave, expressões e uma resposta aprovada pelo dono.",
+        "Acentos, maiúsculas e pontuação não importam; palavras de 5 letras ou mais aceitam uma letra errada.",
+        "Se dois assuntos empatam, o chat pergunta qual deles.",
+        "Sem correspondência, o chat não inventa: indica que uma pessoa precisaria assumir. Nesta demonstração, isso é simulado.",
+        "Um pedido explícito de pessoa (\"quero falar com um atendente\") vale mais que as outras palavras; uma negação logo antes (\"não quero atendente\") desfaz o pedido.",
+        "Saudação sozinha recebe saudação; com pergunta junto, vale a pergunta."
+      ],
+      footer: "Negócio, horários e condições são fictícios. Código aberto (MIT).",
+      whyRule: "regra", whyHits: "palavras", whyNone: "nenhuma regra combinou", whyHuman: "pedido explícito de pessoa", errors: "Problemas na base de regras:",
+      blocked: "O chat está pausado até a base de regras ser corrigida.",
+      pausedTitle: "Chat pausado"
+    },
+    es: {
+      title: "Chat por reglas: demostración",
+      lead: "Pruebe respuestas por palabras clave y vea cuándo el chat indica atención humana. En esta demostración, la derivación es simulada: no se envía ninguna conversación.",
+      desc: "Demostración de chat por reglas en portugués y español, con respuestas predefinidas e indicación simulada de atención humana.", logLabel: "Historial de la conversación",
+      label: "Su mensaje", placeholder: "Escriba su consulta", send: "Enviar",
+      owner: "Consultas sin respuesta en esta pestaña",
+      ownerDesc: "Lista de ejemplo para mostrar lo que falta en la base. El código no transmite ni guarda los mensajes; la lista se reinicia al recargar la página o cambiar de idioma.",
+      none: "Ninguna por ahora.", why: "Mostrar cómo decidió el chat", how: "Cómo funciona",
+      howItems: [
+        "Cada tema tiene palabras clave, expresiones y una respuesta aprobada por el dueño.",
+        "Tildes, mayúsculas y puntuación no importan; palabras de 5 letras o más aceptan una letra equivocada.",
+        "Si dos temas empatan, el chat pregunta cuál de ellos.",
+        "Sin coincidencia, el chat no inventa: indica que una persona debería intervenir. En esta demostración es simulado.",
+        "Un pedido explícito de persona (\"quiero hablar con un asesor\") vale más que las otras palabras; una negación justo antes (\"no quiero un asesor\") anula el pedido.",
+        "Un saludo solo recibe saludo; con una pregunta, vale la pregunta."
+      ],
+      footer: "Negocio, horarios y condiciones son ficticios. Código abierto (MIT).",
+      whyRule: "regla", whyHits: "palabras", whyNone: "ninguna regla coincidió", whyHuman: "pedido explícito de persona", errors: "Problemas en la base de reglas:",
+      blocked: "El chat está en pausa hasta corregir la base de reglas.",
+      pausedTitle: "Chat en pausa"
+    }
+  };
+
+  // Lê o idioma sem supor que a base carregou; null ou ausente vira erro em validateRules.
+  function rulesFor(code) { return ALL && typeof ALL === "object" ? ALL[code] : undefined; }
+  var lang = "pt", cfg = rulesFor("pt"), unanswered = [], blocked = false;
+  var log = document.getElementById("log");
+  var input = document.getElementById("input");
+  var showWhy = document.getElementById("show-why");
+  var sendBtn = document.getElementById("t-send");
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text; // sempre texto, nunca HTML
+    return n;
+  }
+  function scroll() { log.scrollTop = log.scrollHeight; }
+  function labelOf(id) {
+    for (var i = 0; i < cfg.rules.length; i++) if (cfg.rules[i].id === id) return cfg.rules[i].label;
+    return id;
+  }
+  function chips(ids, onPick) {
+    if (!ids || !ids.length) return;
+    var box = el("div", "chips");
+    ids.forEach(function (id) {
+      var b = el("button", null, typeof id === "string" ? labelOf(id) : id.label);
+      b.type = "button";
+      b.addEventListener("click", function () { onPick(typeof id === "string" ? id : id.id); });
+      box.appendChild(b);
+    });
+    log.appendChild(box);
+  }
+  function botSay(res) {
+    log.appendChild(el("div", "msg bot", res.answer));
+    if (res.type === "clarify") chips(res.options, pick);
+    else chips(res.buttons, pick);
+    if (res.type === "handoff") log.appendChild(el("div", "note", cfg.handoffNote));
+    if (showWhy.checked && res.type !== "empty") {
+      var t = TEXT[lang];
+      var why = res.ruleId ? t.whyRule + ": " + res.ruleId + (res.human ? " · " + t.whyHuman : "") + (res.hits && res.hits.length ? " · " + t.whyHits + ": " + res.hits.join(", ") : "")
+        : (res.type === "clarify" ? t.whyRule + ": " + res.options.map(function (o) { return o.id; }).join(" / ") : t.whyNone);
+      log.appendChild(el("div", "why", why));
+    }
+    scroll();
+  }
+  function pick(id) {
+    if (blocked) return;
+    log.appendChild(el("div", "msg user", labelOf(id)));
+    botSay(E.answerById(cfg, id));
+  }
+  function renderUnanswered() {
+    var ul = document.getElementById("unanswered");
+    ul.textContent = "";
+    if (!unanswered.length) { ul.appendChild(el("li", "muted", TEXT[lang].none)); return; }
+    unanswered.slice(-10).forEach(function (q) { ul.appendChild(el("li", null, q)); });
+  }
+  function start() {
+    var t = TEXT[lang];
+    document.documentElement.lang = lang;
+    document.title = t.title;
+    ["title", "lead", "label", "owner", "why", "how", "footer", "send"].forEach(function (k) {
+      var n = document.getElementById("t-" + (k === "ownerDesc" ? "owner-desc" : k));
+      if (n) n.textContent = t[k];
+    });
+    document.getElementById("t-owner-desc").textContent = t.ownerDesc;
+    document.getElementById("meta-desc").setAttribute("content", t.desc);
+    log.setAttribute("aria-label", t.logLabel);
+    input.placeholder = t.placeholder;
+    var how = document.getElementById("how"); how.textContent = "";
+    t.howItems.forEach(function (s) { how.appendChild(el("li", null, s)); });
+
+    // Valida a base antes de ler qualquer propriedade dela (ex.: CHAT_RULES.pt = null).
+    var problems = E.validateRules(cfg);
+    document.getElementById("chat-title").textContent = problems.length ? t.pausedTitle : cfg.business;
+    var box = document.getElementById("errors");
+    box.style.display = problems.length ? "block" : "none";
+    box.textContent = problems.length ? t.errors + " " + problems.join("; ") : "";
+
+    // Base inválida: mostra o diagnóstico e bloqueia envio e atalhos até trocar para uma base válida.
+    blocked = problems.length > 0;
+    input.disabled = blocked;
+    sendBtn.disabled = blocked;
+    log.textContent = "";
+    unanswered = [];
+    renderUnanswered();
+    if (blocked) { log.appendChild(el("div", "note", t.blocked)); return; }
+    log.appendChild(el("div", "msg bot", cfg.greeting));
+    chips(cfg.menu, pick);
+  }
+
+  document.getElementById("form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (blocked) return;
+    var q = input.value;
+    if (!q.trim()) { input.focus(); return; }
+    log.appendChild(el("div", "msg user", q));
+    var res = E.reply(cfg, q);
+    if (res.type === "handoff" && !res.ruleId) { unanswered.push(q.slice(0, 120)); renderUnanswered(); }
+    botSay(res);
+    input.value = "";
+    input.focus();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".langs button"), function (b) {
+    b.addEventListener("click", function () {
+      lang = b.getAttribute("data-lang");
+      cfg = rulesFor(lang);
+      Array.prototype.forEach.call(document.querySelectorAll(".langs button"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+      start();
+    });
+  });
+  start();
+})();
+</script>
+</body>
+</html>
